@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AerialShot - Demande de Photo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background-color: #f4f7f6; 
+        }
+        h1 { color: #2c3e50; text-align: center; font-size: 2.5em; margin-bottom: 5px;}
+        .welcome-text { text-align: center; margin-bottom: 30px; font-size: 1.1em; color: #555; }
+        .images-container { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; }
+        .images-container img { width: 48%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); object-fit: cover; }
+        form { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #2c3e50; }
+        input[type="text"], input[type="email"], input[type="tel"], textarea { 
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit;
+        }
+        input:focus, textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
+        #map { height: 350px; width: 100%; border-radius: 6px; margin-top: 10px; border: 1px solid #ccc; z-index: 1;}
+        button { 
+            display: block; width: 100%; padding: 15px; background: #3498db; color: white; border: none; 
+            border-radius: 6px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.3s; 
+        }
+        button:hover { background: #2980b9; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        #success-section { display: none; text-align: center; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        #success-section img { max-width: 100%; border-radius: 8px; margin-top: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .coordinates-info { font-size: 0.85em; color: #7f8c8d; margin-top: 5px; margin-bottom: 10px;}
+    </style>
+</head>
+<body>
+
+    <div id="main-section">
+        <h1>AerialShot</h1>
+        <p class="welcome-text">Bienvenue !<br>Vous pouvez nous proposer une idée de photo en remplissant le formulaire ci-dessous.</p>
+        
+        <div class="images-container">
+            <img src="photo1.jpg" alt="Exemple AerialShot 1" onerror="this.src='https://via.placeholder.com/400x300?text=photo1.jpg+manquante'">
+            <img src="photo2.jpg" alt="Exemple AerialShot 2" onerror="this.src='https://via.placeholder.com/400x300?text=photo2.jpg+manquante'">
+        </div>
+
+        <form id="photoForm">
+            <div class="form-group">
+                <label for="email">Adresse e-mail *</label>
+                <input type="email" id="email" name="email" placeholder="votreadresse.email@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="tel">Numéro de téléphone *</label>
+                <input type="tel" id="tel" name="tel" placeholder="07X XXX XX XX" required>
+            </div>
+
+            <div class="form-group">
+                <label for="adresse">Adresse postale *</label>
+                <input type="text" id="adresse" name="adresse" placeholder="Rue, NPA, Ville" required>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description de la photo voulue *</label>
+                <textarea id="description" name="description" rows="4" placeholder="Décrivez l'angle, le sujet, le moment de la journée..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Emplacement exact (Cliquez sur la carte pour placer un repère) *</label>
+                <p class="coordinates-info">Aidez-nous en pointant l'endroit précis que vous souhaitez photographier.</p>
+                <div id="map"></div>
+                <input type="hidden" id="latitude" name="latitude" required>
+                <input type="hidden" id="longitude" name="longitude" required>
+                <p id="coord-display" style="color: #27ae60; font-weight: bold; font-size: 0.9em; margin-top: 10px;"></p>
+            </div>
+
+            <button type="submit" id="submitBtn">Envoyer la demande</button>
+        </form>
+    </div>
+
+    <div id="success-section">
+        <h2 style="color: #2c3e50;">Merci pour votre contribution !</h2>
+        <p style="color: #555; font-size: 1.1em;">Nous prendrons le temps d’étudier votre idée et de voir si sa réalisation est possible. Étant encore étudiants, les délais peuvent varier. De plus, si le lieu proposé est trop éloigné, nous ne pourrons malheureusement pas réaliser la photo. Merci pour votre compréhension !</p>
+        <img src="photo3.jpg" alt="Merci de la part d'AerialShot" onerror="this.src='https://via.placeholder.com/800x400?text=photo3.jpg+manquante'">
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. INITIALISATION DE LA CARTE
+        // Centrée sur la Suisse par défaut (Latitude, Longitude, Zoom)
+        const map = L.map('map').setView([46.8182, 8.2275], 7);
+        let marker;
+
+        // Charger les images de la carte (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Placer un repère au clic
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            if (marker) {
+                map.removeLayer(marker);
+            }
+            marker = L.marker([lat, lng]).addTo(map);
+            
+            // Remplir les champs cachés du formulaire
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+            document.getElementById('coord-display').innerText = "📍 Repère placé avec succès (Lat: " + lat.toFixed(4) + ", Lng: " + lng.toFixed(4) + ")";
+        });
+
+        // 2. GESTION DE L'ENVOI DU FORMULAIRE
+        document.getElementById('photoForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Empêche le rechargement brutal de la page
+
+            // Vérifier qu'un point a été placé sur la carte
+            if(!document.getElementById('latitude').value) {
+                alert("⚠️ Veuillez cliquer sur la carte pour indiquer l'emplacement de la photo avant d'envoyer.");
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerText = "Envoi en cours...";
+            submitBtn.disabled = true;
+
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            // =========================================================================
+            // VOS ADRESSES E-MAIL (À MODIFIER)
+            // =========================================================================
+            // Remplacez par l'adresse mail principale qui recevra les formulaires
+            const emailPrincipale = "joakim.golay@gmail.com"; 
+            
+            // Remplacez par l'adresse de votre ami (mise en copie)
+            data._cc = "kalandixmille@gmail.com"; 
+            // =========================================================================
+
+            // Désactiver le Captcha par défaut de FormSubmit pour que ce soit invisible pour l'utilisateur
+            data._captcha = "false";
+
+            // Envoi des données via l'API FormSubmit
+            fetch("https://formsubmit.co/ajax/" + emailPrincipale, {
+                method: "POST",
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Si l'envoi réussit, on cache l'accueil et on affiche le message de remerciement
+                document.getElementById('main-section').style.display = 'none';
+                document.getElementById('success-section').style.display = 'block';
+                window.scrollTo(0, 0); // Remonte la page tout en haut
+            })
+            .catch(error => {
+                console.error("Erreur lors de l'envoi:", error);
+                alert("Une erreur est survenue lors de l'envoi de votre demande. Veuillez réessayer.");
+                submitBtn.innerText = "Envoyer la demande";
+                submitBtn.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>
